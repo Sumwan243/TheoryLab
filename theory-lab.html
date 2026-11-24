@@ -113,6 +113,8 @@
   body {
     margin: 0;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     background:
       radial-gradient(1200px 800px at 15% -10%, #FBF8F0 0%, transparent 60%),
       radial-gradient(1000px 700px at 110% 20%, #F1E6C9 0%, transparent 55%),
@@ -233,7 +235,9 @@
   nav button.active { color: var(--amber); border-bottom-color: var(--amber); font-weight: 600; }
 
   main {
-    padding: clamp(18px, 4vw, 40px);
+    flex: 1;
+    width: 100%;
+    padding: clamp(20px, 4vw, 44px);
     max-width: 1100px;
     margin: 0 auto;
   }
@@ -1801,6 +1805,15 @@ if (themeToggleBtn) {
     let octaveShift = 0;
     const BLACK_PC = new Set([1, 3, 6, 8, 10]);
 
+    function fitKeyWidth(container, minW, maxW, fallbackW, whiteCount) {
+      const wrap = container && container.parentElement;
+      if (wrap && wrap.clientWidth > 60) {
+        const avail = wrap.clientWidth - 36;
+        return Math.max(minW, Math.min(maxW, Math.floor(avail / whiteCount)));
+      }
+      return fallbackW;
+    }
+
     function renderPiano(container, whiteW, pMin, pMax) {
       if (!container) return;
       if (pMin === undefined) pMin = PIANO_MIN;
@@ -1808,8 +1821,8 @@ if (themeToggleBtn) {
       container.innerHTML = '';
       const whites = [];
       for (let m = pMin; m <= pMax; m++) { if (!BLACK_PC.has(m % 12)) whites.push(m); }
-      const blackH = Math.round(whiteW * 3.6);
-      const whiteH = Math.round(whiteW * 4.2);
+      const blackH = Math.round(whiteW * 2.75);
+      const whiteH = Math.round(whiteW * 4.3);
       container.style.height = whiteH + 'px';
       whites.forEach(m => {
         const el = document.createElement('div');
@@ -1834,8 +1847,32 @@ if (themeToggleBtn) {
         container.appendChild(el);
       }
     }
-    renderPiano(document.getElementById('pianoMain'),   34);
-    renderPiano(document.getElementById('pianoCircle'), 26);
+    function renderMainAndCirclePianos() {
+      const pMain = document.getElementById('pianoMain');
+      const pCircle = document.getElementById('pianoCircle');
+      renderPiano(pMain, fitKeyWidth(pMain, 36, 58, 56, 17));
+      renderPiano(pCircle, fitKeyWidth(pCircle, 28, 48, 44, 17));
+    }
+    renderMainAndCirclePianos();
+
+    let resizePianoTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizePianoTimer);
+      resizePianoTimer = setTimeout(() => {
+        renderMainAndCirclePianos();
+        if (typeof pianoEt !== 'undefined' && pianoEt) renderPiano(pianoEt, fitKeyWidth(pianoEt, 34, 56, 52, 17));
+        if (typeof renderBuilderPiano === 'function') renderBuilderPiano();
+      }, 120);
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setTimeout(() => {
+          renderMainAndCirclePianos();
+          if (typeof pianoEt !== 'undefined' && pianoEt) renderPiano(pianoEt, fitKeyWidth(pianoEt, 34, 56, 52, 17));
+          if (typeof renderBuilderPiano === 'function') renderBuilderPiano();
+        }, 10);
+      });
+    });
 
     function shiftOctave(delta) {
       const next = Math.max(-2, Math.min(2, octaveShift + delta));
@@ -1844,8 +1881,7 @@ if (themeToggleBtn) {
       heldNotes.clear(); heldKeyMidi.clear();
       octaveShift = next;
       PIANO_MIN = 48 + octaveShift * 12; PIANO_MAX = 76 + octaveShift * 12;
-      renderPiano(document.getElementById('pianoMain'), 34);
-      renderPiano(document.getElementById('pianoCircle'), 26);
+      renderMainAndCirclePianos();
       document.getElementById('octaveVal').textContent = (octaveShift > 0 ? '+' : '') + octaveShift;
       document.getElementById('octaveRange').textContent = pcName(PIANO_MIN % 12, preferFlatDisplay) + Math.floor(PIANO_MIN / 12 - 1) + '–' + pcName(PIANO_MAX % 12, preferFlatDisplay) + Math.floor(PIANO_MAX / 12 - 1);
       onNotesChanged();
@@ -3144,7 +3180,7 @@ if (themeToggleBtn) {
     let etScore = { correct: 0, total: 0, streak: 0, best: 0 };
 
     const pianoEt = document.getElementById('pianoEt');
-    renderPiano(pianoEt, 30);
+    renderPiano(pianoEt, fitKeyWidth(pianoEt, 34, 56, 52, 17));
     pianoEt.addEventListener('pointerdown', e => {
       const el = e.target.closest('[data-midi]');
       if (!el || etAnswered) return;
@@ -3264,7 +3300,7 @@ if (themeToggleBtn) {
 
     function renderBuilderPiano() {
       if (!pianoBuilderEl) return;
-      renderPiano(pianoBuilderEl, 32, BLD_MIN, BLD_MAX);
+      renderPiano(pianoBuilderEl, fitKeyWidth(pianoBuilderEl, 30, 44, 40, 17), BLD_MIN, BLD_MAX);
       updateBldRange();
     }
 
